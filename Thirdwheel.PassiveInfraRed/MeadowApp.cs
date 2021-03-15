@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Meadow.Gateway.WiFi;
@@ -33,9 +35,12 @@ namespace Thirdwheel.PassiveInfraRed
 
         private static async void OnSensorChanged(object sender, DigitalInputPortEventArgs e)
         {
-            Console.WriteLine($"Motion {(e.Value ? "started" : "ended")}");
+            if (e.Value)
+            {
+                Console.WriteLine("\nMotion started");
 
-            if (e.Value) await SendMotionSensedAsync();
+                await SendMotionSensedAsync();
+            }
         }
 
         private static async Task SendMotionSensedAsync()
@@ -43,21 +48,36 @@ namespace Thirdwheel.PassiveInfraRed
             Console.Write("\nInitialize WiFi Adapter...");
 
             var isInitialized = await Device.InitWiFiAdapter();
-            Console.Write(isInitialized ? "SUCCESS" : "FAILED");
+            Console.Write(isInitialized ? "Success" : "Failed");
 
             if (!isInitialized) return;
 
             Console.Write("\nConnect to WiFi Network...");
 
-            const string ssid = "SomeSSID";
-            const string password = "SomePassword";
+            var connectionResult = Device.WiFiAdapter.Connect(Secrets.NetworkSSID, Secrets.NetworkPassword);
+            Console.Write(connectionResult.ConnectionStatus);
 
-            var result = Device.WiFiAdapter.Connect(ssid, password);
-            Console.Write(result.ConnectionStatus);
+            if (connectionResult.ConnectionStatus != ConnectionStatus.Success)
+                return;
 
+            const string apiUrl = "http://192.168.1.28/motionsensor";
+
+            try
+            {
+                using (var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(5) })
+                using (var content = new StringContent("{\"name\":\"Shed - Interior\"}", Encoding.UTF8, "application/json"))
+                {
+                    Console.Write("\nSending Motion Sensed...");
+
+                    var postResponse = await httpClient.PostAsync(apiUrl, content);
+                    Console.Write(postResponse.StatusCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n\nEXCEPTION DURING SEND --> {ex}");
+            }
             
-
-
         }
 
     }
