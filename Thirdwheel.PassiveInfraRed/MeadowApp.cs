@@ -60,7 +60,7 @@ namespace Thirdwheel.PassiveInfraRed
             if (connectionResult.ConnectionStatus != ConnectionStatus.Success)
                 return;
 
-            const string apiUrl = "http://192.168.1.28/motionsensor";
+            const string apiUrl = "http://192.168.1.8:4321/motionsensor";
 
             try
             {
